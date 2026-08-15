@@ -1,0 +1,7 @@
+.DS_Store
+Thumbs.db
+*.log
+*.bak
+configuration.yaml
+database.db
+coordinator_backup.json
