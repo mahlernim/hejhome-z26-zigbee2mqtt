@@ -4,19 +4,23 @@
 
 ## Summary
 
-Two HejHome Z26 bulbs identified as `TS0505B` / `_TZ3210_cnicaghm` repeatedly left the Zigbee network shortly after joining. The two observed failure windows were **8 minutes 24 seconds** and **10 minutes 19 seconds**. Resetting, re-pairing, replacing the bulb, changing the level-control command, and updating the coordinator firmware did not independently prevent recurrence.
+Two HejHome Z26 bulbs from different production lots, both identified as `TS0505B` / `_TZ3210_cnicaghm`, repeatedly left the Zigbee network shortly after joining. The April 2026 `LOT26D15` unit left after **8 minutes 24 seconds**; the February 2026 `LOT26B30` unit left after **10 minutes 19 seconds** while a level-control workaround was active. Resetting, re-pairing, replacing the bulb, changing the level-control command, and updating the coordinator firmware did not independently prevent recurrence.
 
 The decisive clue came from GOQUAL's official HejHome driver for Homey. Its version 1.1.17 changelog says that the Z26 keep-alive was changed from a five-minute `zclVersion` read to a 30-second `appVersion` read to fix an approximately ten-minute self-leave issue.
 
-We added a fingerprint-specific Zigbee2MQTT external converter that reads the Basic cluster's `appVersion` attribute every **120 seconds**. At the initial release of this report, the bulb had remained joined and continued answering polls for approximately **nine hours**, far beyond the reproduced failure window. One later lighting-command timeout recovered through normal Zigbee retry/recovery; no new leave event was observed.
+We added a fingerprint-specific Zigbee2MQTT external converter that reads the Basic cluster's `appVersion` attribute every **120 seconds**. The February unit remained joined for approximately **34 hours**, ending only when the Zigbee2MQTT host underwent a planned maintenance power cycle. One lighting-command timeout recovered through normal Zigbee retry/recovery; no new leave event was observed. After maintenance, the April unit was also installed with the same converter and remained online past the previous 10-minute failure boundary in its initial replication check.
 
-This is an **experimental mitigation**, not a firmware fix. Its long-term reliability and applicability to other Z26 production batches remain under observation.
+This is an **experimental mitigation**, not a firmware fix. The April unit's post-fix result is preliminary, and long-term reliability beyond these two lots remains under observation.
 
 ![Front packaging, specification panel, and bulb marking for the HejHome Z26](images/hejhome-z26-identification.png)
 
-*HejHome Z26 retail packaging and the marking on the tested bulb. The current bulb was manufactured in April 2026 and marked lot `26D15`.*
+*HejHome Z26 retail packaging and the marking on the April 2026 `LOT26D15` unit.*
 
 ## Affected device
+
+![HejHome Z26 bulb on a transparent background](images/GKZ-LB431RGBCW-E26.png)
+
+*HejHome Z26 product image used for device identification.*
 
 | Field | Observed value |
 | --- | --- |
@@ -29,7 +33,7 @@ This is an **experimental mitigation**, not a firmware fix. Its long-term reliab
 | Endpoint | `1` |
 | Basic cluster | `genBasic` (`0x0000`) |
 | Lamp specification | E26, 9 W, 806 lm, RGB + 2700–6500 K white |
-| Current tested batch | Manufactured 2026-04, lot `26D15` |
+| Tested batches | Manufactured 2026-02, lot `26B30`; manufactured 2026-04, lot `26D15` |
 
 The retail model is listed as a derivative of `A60-RGBCW-ZB` in the [Korean Safety Korea certification record](https://www.safetykorea.kr/release/certDetail?certNum=SU11679-24001&certUid=5795000). It is manufactured in China by Hangzhou Sky-Lighting and sold in Korea under GOQUAL's HejHome brand.
 
@@ -52,8 +56,8 @@ The important observation was not merely that the bulb became unavailable. Zigbe
 
 | Observation | Result |
 | --- | --- |
-| Bulb A | Left 8 min 24 s after joining |
-| Bulb B | Left 10 min 19 s after joining |
+| 2026-04 `LOT26D15` unit | Left 8 min 24 s after joining without keep-alive |
+| 2026-02 `LOT26B30` unit | Left 10 min 19 s after joining with the level-control workaround but without keep-alive |
 | Re-pairing | Restored operation temporarily |
 | Home Assistant retained state | Could remain apparently on after the physical device had left; not connectivity evidence |
 
@@ -140,16 +144,17 @@ See the official [Zigbee2MQTT external converter documentation](https://www.zigb
 | --- | --- |
 | 30-second polling test | Repeated `appVersion: 66` responses; one poll timeout recovered on the next cycle; no leave in the short validation window |
 | 120-second polling test | Crossed the prior 8–10-minute window with six consecutive responses |
-| Continued normal use | Approximately nine hours joined and actively seen at initial publication |
+| Continued normal use | February `LOT26B30` unit remained joined for approximately 34 hours, ending with a planned host power cycle |
+| Preliminary second-unit replication | April `LOT26D15` unit received the same converter and remained online past its previous 10-minute failure boundary during the initial check |
 | Lighting commands | One later timeout recovered; subsequent commands succeeded |
-| Leave events after polling began | None observed at initial publication |
+| Leave events after polling began | None observed during the recorded polling periods |
 
 The correct interpretation is: **periodic `appVersion` reads prevented the reproduced self-leave during the observed period**. The data do not yet prove a permanent cure or eliminate all possible command latency.
 
 ## Limitations
 
-- Only two Z26 bulbs were observed.
-- The current unit's production lot is known; the first unit's lot was not recorded.
+- Only two Z26 bulbs, from two production lots, were observed.
+- The February unit has the longer post-fix observation; the April unit's replication remains preliminary.
 - The 120-second interval has not been compared systematically with 30, 60, 180, or 300 seconds.
 - A longer observation period is required.
 - No public Zigbee2MQTT OTA path was available for this fingerprint during testing.
@@ -164,6 +169,8 @@ This report is a living case record. Please open a GitHub issue if you have the 
 - time from pairing to `leaveInd` without polling;
 - polling attribute and interval; and
 - observation duration with the workaround.
+
+Planned follow-up points for the second unit are 24 hours and seven days after installation. This report will be updated with its observation duration and any leave, timeout, or recovery events.
 
 Do not publish Zigbee IEEE addresses, network keys, household entity names, or unredacted configuration files.
 

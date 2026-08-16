@@ -6,10 +6,10 @@ This file preserves the evidence needed to evaluate the case without publishing 
 
 | Unit | Condition | Observation |
 | --- | --- | --- |
-| A | Paired without keep-alive | Network leave observed 8 min 24 s after joining |
-| B | Paired with a level-control command override but no keep-alive | Network leave observed 10 min 19 s after joining |
+| 2026-04 `LOT26D15` | Paired without keep-alive | Network leave observed 8 min 24 s after joining |
+| 2026-02 `LOT26B30` | Paired with a level-control command override but no keep-alive | Network leave observed 10 min 19 s after joining |
 
-For unit B, the Zigbee2MQTT database entry disappeared immediately after the leave. A retained Home Assistant `on` state was therefore not evidence of continued connectivity.
+For the 2026-02 `LOT26B30` unit, the Zigbee2MQTT database entry disappeared immediately after the leave. A retained Home Assistant `on` state was therefore not evidence of continued connectivity.
 
 ## Coordinator update
 
@@ -27,9 +27,16 @@ The CC2652P2-class coordinator was updated from Z-Stack revision `20210320` to `
 - The converter restarted at approximately 01:25 KST on 2026-08-15.
 - Six consecutive reads returned `appVersion: 66` during the initial 12-minute validation.
 - A later lighting command timed out, but Zigbee retry/recovery completed and subsequent commands succeeded.
-- At approximately 10:30 KST, the device remained joined and its latest activity was less than one polling interval old.
-- No leave event was observed during this approximately nine-hour initial follow-up.
+- The 2026-02 `LOT26B30` unit remained joined for approximately 34 hours, ending only when the Zigbee2MQTT host underwent a planned maintenance power cycle.
+- No leave event was observed during that polling period.
+
+## Preliminary second-unit replication
+
+- After maintenance, the 2026-04 `LOT26D15` unit was installed with the same exact-fingerprint converter and 120-second `appVersion` polling.
+- It completed interview with the same `TS0505B` / `_TZ3210_cnicaghm` fingerprint and `66` / `1` / `0` application, hardware, and stack versions.
+- It remained online and present in the Zigbee2MQTT database beyond its previous 8 min 24 s failure point and beyond the 10 min 19 s boundary observed with the other unit.
+- This was an initial replication check, not a long-term stability result. Follow-up is planned after 24 hours and seven days.
 
 ## Interpretation boundary
 
-These observations support a device-specific keep-alive mitigation. They do not establish the firmware's internal mechanism, the longest safe polling interval, or a permanent cure.
+These observations support a device-specific keep-alive mitigation across two known production lots. They do not establish the firmware's internal mechanism, the longest safe polling interval, or a permanent cure.
