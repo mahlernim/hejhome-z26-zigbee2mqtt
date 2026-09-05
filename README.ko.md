@@ -1,62 +1,66 @@
-# 헤이홈 Z26의 8–10분 후 Zigbee 네트워크 이탈 문제
+# 헤이홈 Z26 설치 안내
 
-[Full technical report in English](README.md)
+[English](README.en.md) · [개요](README.md)
 
-## 요약
+헤이홈 스마트 컬러 전구 Z26의 재현된 self-leave 현상을 완화하는 외부 컨버터입니다. Basic cluster의 `appVersion`을 120초마다 읽으며 기존 Tuya RGB+CCT 기능을 유지합니다.
 
-서로 다른 생산 lot의 헤이홈 스마트 컬러 전구 Z26 두 개에서 같은 문제가 발생했다. 두 전구 모두 Zigbee 식별 정보가 `TS0505B` / `_TZ3210_cnicaghm`이고 app / hardware / stack version이 `66` / `1` / `0`이었다. 2026년 4월 `LOT26D15` 제품은 **8분 24초**, 2026년 2월 `LOT26B30` 제품은 밝기 명령 우회 설정이 적용된 상태에서도 **10분 19초** 뒤 네트워크에서 이탈했다.
+## 호환성
 
-공장 초기화와 재페어링, 새 전구로 교체, 밝기 명령 방식 변경, CC2652P2 coordinator firmware 업데이트만으로는 문제가 해결되지 않았다.
-
-결정적인 단서는 GOQUAL의 공식 HejHome Homey driver 변경 이력에서 찾았다. Version 1.1.17은 Z26의 약 10분 후 self-leave 문제를 해결하기 위해 keep-alive를 `zclVersion` 5분 간격에서 `appVersion` 30초 간격으로 변경했다고 명시한다.
-
-이를 바탕으로 Zigbee2MQTT external converter에 Basic cluster의 `appVersion`을 **120초마다 읽는 poll**을 추가했다. 2026년 2월 `LOT26B30` 제품은 계획된 host maintenance 전원 재시작 전까지 약 **34시간** 동안 네트워크에 남았고 새로운 leave event는 관찰되지 않았다. 중간에 조명 명령 timeout 한 번이 있었지만 Zigbee의 정상적인 retry/recovery 과정에서 회복했다. Maintenance 후 2026년 4월 `LOT26D15` 제품에도 같은 converter를 적용했으며, 초기 확인에서는 과거의 10분 failure boundary를 넘겨 online 상태를 유지했다.
-
-초기 관찰에서는 self-leave를 억제했습니다. 펌웨어 자체를 수정한 것은 아니며, 아래 후속 점검에서도 장시간 통신 중단이 확인되어 영구적인 해결이나 연속 정상 동작으로 단정하지 않습니다.
-
-## 2026년 9월 5일 후속 점검
-
-두 전구 모두 Zigbee2MQTT 2.14.1과 zigbee-herdsman-converters 26.105.0에서 기존 120초 external converter를 사용하고 있었습니다. 읽기 전용 상태, 밝기, 색온도 요청에 두 전구가 모두 새 응답을 반환했으며 데이터베이스의 최근 통신 시각도 갱신되었습니다. 조명 설정은 변경하지 않았고 실제 점등, 밝기 변화, RGB 출력은 다시 시험하지 않았습니다.
-
-보관된 8월 23일부터 9월 5일까지의 warning/error 로그에는 두 전구의 새로운 네트워크 이탈 기록이 없었습니다. 다만 전구당 availability ping 실패 37회와 재연결 후 상태 읽기 실패 2회가 있었습니다. 8월 30일부터 남아 있는 약 6일의 Home Assistant 기록에는 전구당 약 8.8시간의 사용 불가 상태가 있었습니다. 대부분은 bridge가 online인 동안 두 전구에서 함께 발생한 세 차례의 중단입니다. 사용자 기억으로는 9월 3일의 두 차례 장시간 중단 때 전원 스위치가 꺼졌을 가능성이 있지만 독립적으로 확인되지는 않았습니다. 9월 2일의 약 24분 중단은 원인이 불명확합니다. 따라서 이 시간을 keep-alive의 확인된 실패 시간으로 계산해서는 안 됩니다.
-
-다른 Zigbee 장치와 비교하면 일부 장치는 해당 중단 전부터 이미 사용 불가 상태였습니다. 하지만 별도의 Zigbee 전력 측정 장치는 세 구간 모두에서 최대 45초 이하의 간격으로 변화한 측정값을 계속 보냈습니다. 다른 온도 센서도 갱신되었으며, 9월 3일에는 다른 전구의 상태 변화도 이어졌습니다. 따라서 해당 시간 내내 전체 Zigbee 네트워크가 중단된 것은 아니지만, 일부 mesh 경로의 문제까지 배제할 수는 없습니다.
-
-따라서 기존 self-leave 문제의 완화와 현재 통신 응답은 확인했지만, 3주 연속 정상 동작이나 이후 통신 중단까지 해결되었다고 판단할 수는 없습니다. Warning 수준 로그만으로는 성공한 keep-alive의 연속 기록도 확인할 수 없습니다. 자세한 범위와 한계는 [후속 관찰 기록](evidence/observations.md#september-5-follow-up)을 참고하세요.
-
-같은 날짜의 공개 검색에서는 정확한 fingerprint에 대한 새로운 독립적인 해결책이나 공개 OTA 이미지를 찾지 못했습니다. GOQUAL의 Homey 페이지는 여전히 1.1.17의 같은 우회 방법을 안내합니다. 검색에서 찾지 못했다는 사실이 자료의 부재를 증명하지는 않으며, 이 프로젝트의 블로그 글은 독립적인 검증 자료로 세지 않았습니다.
-
-## Zigbee2MQTT 정식 지원 제안
-
-9월 5일, 정확한 fingerprint에만 적용하는 [장치 정의 PR #13122](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13122)와 [제품 이미지 및 문서 PR #5490](https://github.com/Koenkk/zigbee2mqtt.io/pull/5490)를 제출했습니다. 모든 `TS0505B` 전구에 일괄 적용하지 않습니다. 120초는 경험적으로 시험한 값이며 GOQUAL은 30초를 사용한다는 점, 이후 통신 중단의 원인이 아직 확인되지 않았다는 점을 함께 설명했습니다. 로컬에서 build, lint, 기존 테스트 844개, benchmark 및 별도의 fingerprint와 polling lifecycle 검증을 통과했습니다. 현재 maintainer 검토를 기다리는 단계이며 제출만으로 정식 Zigbee2MQTT 버전에 포함된 것은 아닙니다. 내장 정의가 포함된 버전이 출시되기 전까지는 기존 external converter를 유지하세요.
-
-## 대상 제품
-
-![투명 배경의 헤이홈 Z26 전구](images/GKZ-LB431RGBCW-E26.png)
-
-*제품 식별에 사용한 헤이홈 Z26 이미지.*
-
-| 항목 | 값 |
+| 항목 | 시험한 값 |
 | --- | --- |
-| 제품 | 헤이홈 스마트 컬러 전구 Z26 |
-| 모델명 | `GKZ-LB431RGBCW-E26` |
+| 제품 모델 | `GKZ-LB431RGBCW-E26` |
 | Zigbee model | `TS0505B` |
-| Manufacturer fingerprint | `_TZ3210_cnicaghm` |
-| App / hardware / stack version | `66` / `1` / `0` |
-| 시험 제품 | 2026년 2월 제조 `LOT26B30`; 2026년 4월 제조 `LOT26D15` |
+| Manufacturer | `_TZ3210_cnicaghm` |
+| Application / hardware / stack version | `66` / `1` / `0` |
+| Endpoint | `1` |
+| 시험한 소프트웨어 | Zigbee2MQTT 2.13.0 및 2.14.1 |
 
-## 우회 방법
+Manufacturer fingerprint가 정확히 일치해야 합니다. 같은 `TS0505B` 이름을 사용하는 제품도 펌웨어가 다를 수 있습니다. 이 저장소는 외부 컨버터를 제공하며 OTA 펌웨어 업데이트를 제공하지 않습니다.
 
-[`external_converter/hejhome-z26.mjs`](external_converter/hejhome-z26.mjs)를 Zigbee2MQTT의 `external_converters` 폴더에 설치한다. 이 converter는 정확히 `TS0505B` / `_TZ3210_cnicaghm` fingerprint에만 적용되며 `genBasic.appVersion`을 120초 간격으로 읽는다.
+## 설치
 
-GOQUAL의 Homey driver는 30초 간격을 사용한다. 120초는 우리가 관찰한 8–10분 failure window 안에서 여러 번의 poll 실패를 허용하면서 traffic을 줄이기 위해 선택한 경험적 값이다. 다른 간격을 체계적으로 비교한 결과는 아직 없다.
+1. Zigbee2MQTT 장치 정보에서 model과 manufacturer를 확인하세요.
+2. [`hejhome-z26.mjs`](external_converter/hejhome-z26.mjs)를 내려받아 코드를 확인하세요. 외부 컨버터는 Zigbee2MQTT 내부에서 JavaScript로 실행됩니다.
+3. Zigbee2MQTT의 `configuration.yaml` 옆에 있는 `external_converters` 폴더에 파일을 넣거나 **Settings → Dev console → External converters**에서 내용을 저장하세요. 같은 fingerprint용 기존 컨버터가 있다면 중복으로 로드하지 말고 교체하세요.
+4. Zigbee2MQTT 2.11.0 이상에서는 설정에서 외부 JavaScript를 활성화하세요.
 
-상세한 재현 기록, 실패한 시도, 설치법, 관련 근거와 한계는 [영문 기술 보고서](README.md)에 정리했다.
+   ```yaml
+   advanced:
+     enable_external_js: true
+   ```
 
-## 주의
+5. Zigbee2MQTT를 재시작하고 전구가 외부 정의의 `TS0505B_1_cnicaghm`으로 인식되는지 확인하세요.
 
-- `_TZ3210_cnicaghm`이 아닌 다른 `TS0505B` 제품에 결과를 일반화하면 안 된다.
-- External converter는 Zigbee2MQTT 내부에서 JavaScript로 실행되므로 코드를 검토한 뒤 사용해야 한다.
-- Zigbee IEEE address, network key, 가정 내 entity name 등은 issue에 올리지 않는 것이 좋다.
-- 같은 제품을 사용한다면 제조년월, lot, `appVersion`, polling interval과 관찰 시간을 공유해주면 도움이 된다.
-- 이전에 계획했던 24시간과 7일 점검은 연속 기록이 없어 소급 확인할 수 없습니다. 현재 판단에는 9월 5일 후속 점검의 범위와 한계를 적용하세요.
+이미 페어링된 전구를 초기화하거나 다시 페어링할 필요는 없습니다. 별도 polling 자동화도 필요하지 않습니다. 자세한 내용은 [공식 외부 컨버터 문서](https://www.zigbee2mqtt.io/advanced/more/external_converters.html)를 참고하세요.
+
+## 확인과 문제 해결
+
+잠시 debug 로그를 활성화하여 `hejhome_z26_app_version_keepalive`의 간격이 120초인지 확인하세요. 이후 `genBasic` 읽기 응답이 들어오는지 확인하세요. 시험한 펌웨어는 `appVersion: 66`을 반환합니다. 확인 후 평소 로그 수준으로 되돌리세요.
+
+기존 실패 구간인 8–10분을 넘긴 뒤에도 새로운 장치 응답이 오는지 확인하세요. MQTT에 남아 있는 상태만으로는 실제 연결 여부를 판단할 수 없습니다. 전구가 응답하지 않으면 전원 공급 여부와 다른 Zigbee 장치의 통신 상태를 확인하세요. 전원 차단, 라우팅 문제, 명시적인 네트워크 이탈은 서로 다른 현상입니다.
+
+컨버터가 로드되지 않으면 시작 로그의 오류, 파일 위치, 외부 JavaScript 설정, 중복 정의를 확인하세요. 컨버터 로딩 오류를 해결하기 위해 전구부터 초기화하지 마세요.
+
+## 근거와 한계
+
+GOQUAL의 [공식 Homey 앱 변경 이력](https://homey.app/en-us/app/com.hejhome.iot/Hejhome/)에도 약 10분 뒤 self-leave를 막기 위한 `appVersion` keep-alive가 명시되어 있습니다. 해당 드라이버는 30초를 사용하며, 이 컨버터는 경험적으로 시험한 120초를 사용합니다.
+
+Application version 66인 두 생산 lot에서 시험했습니다. 관찰된 polling 구간에서는 재현되던 self-leave를 억제했습니다. 연속적인 장기 신뢰성, 최적 간격, 펌웨어 내부 원인은 확립되지 않았습니다. 통제된 관찰 외에는 일부 통신 중단이 있었지만 컨버터 때문인지 판단할 수 없었습니다. 이 방법이 모든 통신 중단이나 조명 명령 timeout을 해결하는 것은 아닙니다.
+
+기준 조건, 관찰 결과와 해석 범위는 [기술 근거](evidence/observations.md)에 정리했습니다.
+
+## 내장 지원
+
+[컨버터 PR #13122](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13122)와 [장치 문서 PR #5490](https://github.com/Koenkk/zigbee2mqtt.io/pull/5490)로 지원을 제안했습니다. PR 제출만으로 정식 버전에 포함되는 것은 아닙니다.
+
+내장 정의가 포함된 Zigbee2MQTT 버전이 출시되기 전까지 이 외부 컨버터를 유지하세요. 해당 버전으로 업데이트한 뒤에는 외부 컨버터를 제거하고 Zigbee2MQTT를 재시작하세요. 내장 `GKZ-LB431RGBCW-E26` 정의를 사용하는지 확인하세요. 다시 페어링할 필요는 없습니다.
+
+## 문제 제보
+
+제품 모델, manufacturer fingerprint, 펌웨어 및 Zigbee2MQTT 버전, 식별 정보를 제거한 짧은 오류 내용을 포함하세요. 네트워크 이탈, timeout, 컨버터 로딩 실패 중 어떤 현상인지 설명하세요. 한국어와 영어 제보 모두 가능합니다.
+
+인증 정보, IEEE 주소, 전체 설정 파일, 가정 내 장치 이름이나 생활 기록은 올리지 마세요.
+
+## 라이선스
+
+코드는 [MIT](LICENSE-CODE), 보고서와 사진 합성물은 명시된 예외를 제외하고 [CC BY 4.0](LICENSE-DOCUMENTATION.md)을 적용합니다.
