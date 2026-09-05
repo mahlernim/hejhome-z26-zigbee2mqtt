@@ -1,53 +1,50 @@
-# Sanitized observations
+# HejHome Z26 technical evidence
 
-This file preserves the evidence needed to evaluate the case without publishing household entity names, Zigbee IEEE addresses, network identifiers, or complete private logs.
+[Overview](../README.md) · [Installation](../README.en.md)
 
-## Baseline
+## Device identification
 
-| Unit | Condition | Observation |
+Both tested bulbs reported `TS0505B` / `_TZ3210_cnicaghm`, application version 66, hardware version 1, and stack version 0. The retail model is `GKZ-LB431RGBCW-E26`.
+
+![Retail packaging, specifications, and product marking](../images/hejhome-z26-identification.png)
+
+The image identifies the product and one tested production lot. Model, certification, and production-lot markings describe the product, not its Zigbee network identity.
+
+## Reproduced baseline
+
+| Production lot | Condition | Result |
 | --- | --- | --- |
-| 2026-04 `LOT26D15` | Paired without keep-alive | Network leave observed 8 min 24 s after joining |
-| 2026-02 `LOT26B30` | Paired with a level-control command override but no keep-alive | Network leave observed 10 min 19 s after joining |
+| `LOT26D15`, manufactured 2026-04 | No keep-alive | Network leave after 8 min 24 s |
+| `LOT26B30`, manufactured 2026-02 | Level-control override, no keep-alive | Network leave after 10 min 19 s |
 
-For the 2026-02 `LOT26B30` unit, the Zigbee2MQTT database entry disappeared immediately after the leave. A retained Home Assistant `on` state was therefore not evidence of continued connectivity.
+An explicit network leave and removal from the Zigbee device database distinguish this symptom from a stale Home Assistant state. Re-pairing, changing the level-control command, and updating the coordinator firmware did not independently establish reliable operation.
 
-## Coordinator update
+## Keep-alive results
 
-The CC2652P2-class coordinator was updated from Z-Stack revision `20210320` to `20240710`. The existing network was restored and other devices answered direct reads, confirming that the coordinator and mesh were operational. The Z26 nevertheless became registered-but-unresponsive later in the test. The coordinator update was therefore not sufficient.
+The external converter reads endpoint 1, cluster `genBasic`, attribute `appVersion`.
 
-## 30-second `appVersion` polling
+| Test | Observation |
+| --- | --- |
+| 30-second polling | Repeated version reads succeeded; a timed-out read recovered on the next cycle |
+| 120-second polling | Repeated reads succeeded beyond the reproduced failure window |
+| `LOT26B30` with 120-second polling | No leave observed in an approximately 34-hour observation period |
+| `LOT26D15` with 120-second polling | Remained connected beyond its reproduced failure window |
+| Lighting control | Brightness commands succeeded during initial validation |
+| Subsequent compatibility check | Both bulbs answered state, brightness, and color-temperature reads with the converter on Zigbee2MQTT 2.14.1 |
 
-- Repeated Basic-cluster reads returned `appVersion: 66`.
-- One read timed out; the bulb answered the next poll approximately 31 seconds later without intervention.
-- The bulb crossed the previous ten-minute failure window without leaving.
-- A controlled brightness change succeeded after the failure window.
+Initial testing used Zigbee2MQTT 2.13.0. The later compatibility check used converter library 26.105.0. This does not establish uninterrupted availability between tests. Communication interruptions outside the controlled observations could not be attributed to the converter.
 
-## 120-second `appVersion` polling
+## Independent corroboration
 
-- The converter restarted at approximately 01:25 KST on 2026-08-15.
-- Six consecutive reads returned `appVersion: 66` during the initial 12-minute validation.
-- A later lighting command timed out, but Zigbee retry/recovery completed and subsequent commands succeeded.
-- The 2026-02 `LOT26B30` unit remained joined for approximately 34 hours, ending only when the Zigbee2MQTT host underwent a planned maintenance power cycle.
-- No leave event was observed during that polling period.
+GOQUAL's [official Hejhome Homey app](https://homey.app/en-us/app/com.hejhome.iot/Hejhome/) version 1.1.17 describes changing the Z26 keep-alive from a five-minute `zclVersion` read to a 30-second `appVersion` read to address approximately ten-minute self-leaves.
 
-## Preliminary second-unit replication
+This supports the symptom and general workaround. It does not independently validate this converter's 120-second interval.
 
-- After maintenance, the 2026-04 `LOT26D15` unit was installed with the same exact-fingerprint converter and 120-second `appVersion` polling.
-- It completed interview with the same `TS0505B` / `_TZ3210_cnicaghm` fingerprint and `66` / `1` / `0` application, hardware, and stack versions.
-- It remained online and present in the Zigbee2MQTT database beyond its previous 8 min 24 s failure point and beyond the 10 min 19 s boundary observed with the other unit.
-- This was an initial replication check, not a long-term stability result. The later follow-up below supersedes the planned 24-hour and seven-day checks, which were not continuously recorded.
+## Interpretation limits
 
-## September 5 follow-up
-
-- Both lots were present with application version 66 and the same exact-fingerprint converter configured for 120-second polling. Zigbee2MQTT reported version 2.14.1 and converter library 26.105.0, and identified both device definitions as external.
-- Both devices returned fresh, non-retained MQTT state publications after read-only requests for on/off state, brightness, and color temperature. Database activity timestamps advanced during the check. No settings were changed. Physical output and write-command behavior were not retested.
-- Retained warning/error logs spanned August 23 through September 5. No network-leave line named either tested bulb. The same retained log set did record an unrelated device leaving, but this does not establish complete event coverage for the bulbs.
-- Each bulb had 37 failed availability pings across six dates and two failed post-reconnect state reads. These are failed attempts, not 39 separate outage episodes. Successful keep-alive reads are not continuously visible at this logging level.
-- Home Assistant returned state history starting August 30 despite a request starting August 15. Roughly six days of available history recorded approximately 8.8 hours of unavailability for each bulb. Most of this occurred in three shared episodes of approximately 24 minutes, 4 hours 55 minutes, and 3 hours 28 minutes. The bridge remained online during these longer episodes; short restart-related transitions were also present.
-- The owner recalled likely mains-switch power removal during the two longer September 3 episodes; that explanation is plausible but not independently verified. The September 2 episode remains unexplained. These durations are observed unavailability, not established keep-alive failures. The record cannot establish uninterrupted operation since installation, a firmware cure, or that the keep-alive caused every later recovery.
-- A cross-device comparison found six other plug entities and three temperature-sensor entities unavailable throughout September 2 and 3, already unavailable at the start of that comparison. Their presence is evidence of broader pre-existing availability problems, not simultaneous onset with the bulb episodes. An independent Zigbee power sensor recorded 224, 2,319, and 1,848 valid value changes in the three comparison windows, with maximum inter-change gaps of approximately 30, 45, and 45 seconds. Other temperature sensors continued updating, and another Zigbee bulb had 10 and 12 state changes during the two September 3 windows. This excludes a sustained whole-network outage during the episodes but does not exclude partial routing problems.
-- Current evidence supports mitigation of the originally reproduced self-leave while leaving later availability interruptions unresolved. No new interval comparison or additional-unit replication was performed.
-
-## Interpretation boundary
-
-These observations support a device-specific keep-alive mitigation across two known production lots. They do not establish the firmware's internal mechanism, the longest safe polling interval, or a permanent cure.
+- Evidence covers two production lots with application version 66.
+- Periodic `appVersion` reads prevented the reproduced self-leave during observed testing. This is a mitigation, not a demonstrated firmware repair.
+- Continuous long-term reliability and the optimal polling interval have not been established.
+- The firmware mechanism and whether other attributes would be equally effective remain unknown.
+- Successful polling does not guarantee every lighting command succeeds or rule out power and routing failures.
+- Findings must not be generalized to other `TS0505B` manufacturer fingerprints.
