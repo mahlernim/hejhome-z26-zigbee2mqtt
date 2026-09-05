@@ -12,7 +12,21 @@
 
 이를 바탕으로 Zigbee2MQTT external converter에 Basic cluster의 `appVersion`을 **120초마다 읽는 poll**을 추가했다. 2026년 2월 `LOT26B30` 제품은 계획된 host maintenance 전원 재시작 전까지 약 **34시간** 동안 네트워크에 남았고 새로운 leave event는 관찰되지 않았다. 중간에 조명 명령 timeout 한 번이 있었지만 Zigbee의 정상적인 retry/recovery 과정에서 회복했다. Maintenance 후 2026년 4월 `LOT26D15` 제품에도 같은 converter를 적용했으며, 초기 확인에서는 과거의 10분 failure boundary를 넘겨 online 상태를 유지했다.
 
-현재 결론은 “관찰 기간 동안 self-leave를 억제했다”이다. Firmware 자체를 수정한 것이 아니며, 4월 제품의 재현 결과는 아직 초기 관찰이므로 영구적으로 해결됐다고 단정하지 않는다.
+초기 관찰에서는 self-leave를 억제했습니다. 펌웨어 자체를 수정한 것은 아니며, 아래 후속 점검에서도 장시간 통신 중단이 확인되어 영구적인 해결이나 연속 정상 동작으로 단정하지 않습니다.
+
+## 2026년 9월 5일 후속 점검
+
+두 전구 모두 Zigbee2MQTT 2.14.1과 zigbee-herdsman-converters 26.105.0에서 기존 120초 external converter를 사용하고 있었습니다. 읽기 전용 상태, 밝기, 색온도 요청에 두 전구가 모두 새 응답을 반환했으며 데이터베이스의 최근 통신 시각도 갱신되었습니다. 조명 설정은 변경하지 않았고 실제 점등, 밝기 변화, RGB 출력은 다시 시험하지 않았습니다.
+
+보관된 8월 23일부터 9월 5일까지의 warning/error 로그에는 두 전구의 새로운 네트워크 이탈 기록이 없었습니다. 다만 전구당 availability ping 실패 37회와 재연결 후 상태 읽기 실패 2회가 있었습니다. 8월 30일부터 남아 있는 약 6일의 Home Assistant 기록에는 전구당 약 8.8시간의 사용 불가 상태가 있었습니다. 대부분은 bridge가 online인 동안 두 전구에서 함께 발생한 세 차례의 중단입니다. 사용자 기억으로는 9월 3일의 두 차례 장시간 중단 때 전원 스위치가 꺼졌을 가능성이 있지만 독립적으로 확인되지는 않았습니다. 9월 2일의 약 24분 중단은 원인이 불명확합니다. 따라서 이 시간을 keep-alive의 확인된 실패 시간으로 계산해서는 안 됩니다.
+
+따라서 기존 self-leave 문제의 완화와 현재 통신 응답은 확인했지만, 3주 연속 정상 동작이나 이후 통신 중단까지 해결되었다고 판단할 수는 없습니다. Warning 수준 로그만으로는 성공한 keep-alive의 연속 기록도 확인할 수 없습니다. 자세한 범위와 한계는 [후속 관찰 기록](evidence/observations.md#september-5-follow-up)을 참고하세요.
+
+같은 날짜의 공개 검색에서는 정확한 fingerprint에 대한 새로운 독립적인 해결책이나 공개 OTA 이미지를 찾지 못했습니다. GOQUAL의 Homey 페이지는 여전히 1.1.17의 같은 우회 방법을 안내합니다. 검색에서 찾지 못했다는 사실이 자료의 부재를 증명하지는 않으며, 이 프로젝트의 블로그 글은 독립적인 검증 자료로 세지 않았습니다.
+
+## Zigbee2MQTT 정식 지원 제안
+
+정확한 fingerprint에만 적용하는 장치 정의와 keep-alive를 `zigbee-herdsman-converters`에 제안하고, 제품 이미지와 주의사항은 `zigbee2mqtt.io`에 기여할 수 있습니다. 모든 `TS0505B` 전구에 일괄 적용해서는 안 됩니다. 120초는 경험적으로 시험한 값이며 GOQUAL은 30초를 사용한다는 점, 통신 중단 원인이 아직 확인되지 않았다는 점을 함께 설명해야 합니다. [공식 기여 절차](https://www.zigbee2mqtt.io/advanced/support-new-devices/01_support_new_devices.html)에 따라 검증과 maintainer 검토가 필요하며, 이 프로젝트는 아직 Z26 upstream PR을 제출하지 않았습니다.
 
 ## 대상 제품
 
@@ -43,4 +57,4 @@ GOQUAL의 Homey driver는 30초 간격을 사용한다. 120초는 우리가 관�
 - External converter는 Zigbee2MQTT 내부에서 JavaScript로 실행되므로 코드를 검토한 뒤 사용해야 한다.
 - Zigbee IEEE address, network key, 가정 내 entity name 등은 issue에 올리지 않는 것이 좋다.
 - 같은 제품을 사용한다면 제조년월, lot, `appVersion`, polling interval과 관찰 시간을 공유해주면 도움이 된다.
-- 4월 제품은 설치 후 24시간과 7일 시점에 leave, timeout, recovery 여부와 관찰 시간을 다시 확인할 예정이다.
+- 이전에 계획했던 24시간과 7일 점검은 연속 기록이 없어 소급 확인할 수 없습니다. 현재 판단에는 9월 5일 후속 점검의 범위와 한계를 적용하세요.

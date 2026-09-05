@@ -10,7 +10,15 @@ The decisive clue came from GOQUAL's official HejHome driver for Homey. Its vers
 
 We added a fingerprint-specific Zigbee2MQTT external converter that reads the Basic cluster's `appVersion` attribute every **120 seconds**. The February unit remained joined for approximately **34 hours**, ending only when the Zigbee2MQTT host underwent a planned maintenance power cycle. One lighting-command timeout recovered through normal Zigbee retry/recovery; no new leave event was observed. After maintenance, the April unit was also installed with the same converter and remained online past the previous 10-minute failure boundary in its initial replication check.
 
-This is an **experimental mitigation**, not a firmware fix. The April unit's post-fix result is preliminary, and long-term reliability beyond these two lots remains under observation.
+This is an **experimental mitigation**, not a firmware fix. A September 5 follow-up confirmed both bulbs responding with the same converter, but also found extended availability interruptions. See the [current follow-up](#september-5-follow-up) before interpreting the initial results as long-term reliability.
+
+## September 5 follow-up
+
+Both tested bulbs were still using the exact-fingerprint external converter with a 120-second interval on Zigbee2MQTT 2.14.1 and zigbee-herdsman-converters 26.105.0. Both answered fresh read-only requests for on/off state, brightness, and color temperature. Database activity timestamps advanced during the check. No lighting settings were changed, and physical switching, dimming, and RGB output were not retested.
+
+The retained warning/error logs covered August 23 through September 5. They contained no recorded network leave for either bulb, but included 37 failed availability pings and two failed post-reconnect reads per bulb. Home Assistant history was available only from August 30, approximately six days, and recorded about 8.8 hours of unavailability per bulb, mostly in three shared interruptions while the bridge stayed online. The owner recalled a likely mains-switch power-off during the two longer September 3 interruptions, but this was not independently verified. The approximately 24-minute September 2 interruption remains unexplained. These periods cannot be counted as confirmed failures of the keep-alive. Warning-level logs do not provide a continuous record of successful keep-alive reads.
+
+The evidence supports mitigation of the originally reproduced self-leave, and confirms that both bulbs currently respond. It does **not** establish uninterrupted three-week operation or resolve the later communication interruptions. See [sanitized follow-up observations](evidence/observations.md#september-5-follow-up).
 
 ![Front packaging, specification panel, and bulb marking for the HejHome Z26](images/hejhome-z26-identification.png)
 
@@ -83,7 +91,7 @@ The strongest public evidence is the [official HejHome app page for Homey](https
 
 This disclosure independently matches the symptom and timing observed with our two bulbs. It also shows that another HejHome integration treats periodic Basic-cluster reads as a required device-specific keep-alive.
 
-The exact fingerprint `_TZ3210_cnicaghm` was not found in indexed public Zigbee2MQTT issues or converter definitions during our August 2026 search. Zigbee2MQTT currently handles the product through its generic [Tuya `TS0505B_1` definition](https://www.zigbee2mqtt.io/devices/TS0505B_1.html), which provides the expected lighting features but does not document this keep-alive quirk.
+The September 5, 2026 search found no exact-fingerprint match in GitHub issue search or the upstream converter code search. The [Tuya source inspected at that date](https://github.com/Koenkk/zigbee-herdsman-converters/blob/cf6e6596facaf36cc850e4e904f55748492ce13d/src/devices/tuya.ts) did not include `_TZ3210_cnicaghm`. The generic [Tuya `TS0505B_1` definition](https://www.zigbee2mqtt.io/devices/TS0505B_1.html) provides lighting features but does not document this keep-alive quirk. GOQUAL's Homey page still listed version 1.1.17 and the same workaround. No newer independent exact-device fix or public OTA image was located. Search absence is not proof that none exists, and this project's own blog report is not independent corroboration.
 
 Other `TS0505B` reports provide useful context but involve different products or fingerprints; they are not proof of the Z26 defect. Examples include [Zigbee2MQTT issue #21761](https://github.com/Koenkk/zigbee2mqtt/issues/21761), [issue #19656](https://github.com/Koenkk/zigbee2mqtt/issues/19656), and a [Home Assistant Community report](https://community.home-assistant.io/t/zigbee-ceiling-light-keeps-going-totally-offline-and-throwing-whole-network/776897).
 
@@ -154,9 +162,9 @@ The correct interpretation is: **periodic `appVersion` reads prevented the repro
 ## Limitations
 
 - Only two Z26 bulbs, from two production lots, were observed.
-- The February unit has the longer post-fix observation; the April unit's replication remains preliminary.
+- Both units responded in the September follow-up, but neither has a complete uninterrupted long-term observation record.
 - The 120-second interval has not been compared systematically with 30, 60, 180, or 300 seconds.
-- A longer observation period is required.
+- The shared availability interruptions need context, including whether mains power was intentionally removed.
 - No public Zigbee2MQTT OTA path was available for this fingerprint during testing.
 - Findings for `_TZ3210_cnicaghm` must not be generalized to every device using the broad `TS0505B` model identifier.
 
@@ -170,7 +178,13 @@ This report is a living case record. Please open a GitHub issue if you have the 
 - polling attribute and interval; and
 - observation duration with the workaround.
 
-Planned follow-up points for the second unit are 24 hours and seven days after installation. This report will be updated with its observation duration and any leave, timeout, or recovery events.
+The September 5 follow-up supersedes the earlier planned 24-hour and seven-day checks. Those checkpoints were not continuously recorded and cannot be reconstructed from the retained evidence.
+
+### Upstream contribution path
+
+The proposed change belongs in `zigbee-herdsman-converters`, using an exact `TS0505B` / `_TZ3210_cnicaghm` match and the existing lifecycle-managed polling helper. It should identify the HejHome Z26 retail model and preserve normal Tuya RGB+CCT behavior. A generic change for all `TS0505B` bulbs would extend beyond the evidence.
+
+The [official contribution guide](https://www.zigbee2mqtt.io/advanced/support-new-devices/01_support_new_devices.html) describes submitting the definition to the converter repository and a device image plus optional notes to `zigbee2mqtt.io`. The notes should explain the keep-alive requirement, the empirically tested 120-second interval, GOQUAL's 30-second choice, and the unresolved reliability limits. Regression checks should cover fingerprint selection, polling lifecycle, and unaffected generic devices before submission. Maintainer review determines acceptance and release timing. No upstream Z26 pull request has been submitted by this project as of this follow-up.
 
 Do not publish Zigbee IEEE addresses, network keys, household entity names, or unredacted configuration files.
 

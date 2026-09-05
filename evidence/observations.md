@@ -35,7 +35,17 @@ The CC2652P2-class coordinator was updated from Z-Stack revision `20210320` to `
 - After maintenance, the 2026-04 `LOT26D15` unit was installed with the same exact-fingerprint converter and 120-second `appVersion` polling.
 - It completed interview with the same `TS0505B` / `_TZ3210_cnicaghm` fingerprint and `66` / `1` / `0` application, hardware, and stack versions.
 - It remained online and present in the Zigbee2MQTT database beyond its previous 8 min 24 s failure point and beyond the 10 min 19 s boundary observed with the other unit.
-- This was an initial replication check, not a long-term stability result. Follow-up is planned after 24 hours and seven days.
+- This was an initial replication check, not a long-term stability result. The later follow-up below supersedes the planned 24-hour and seven-day checks, which were not continuously recorded.
+
+## September 5 follow-up
+
+- Both lots were present with application version 66 and the same exact-fingerprint converter configured for 120-second polling. Zigbee2MQTT reported version 2.14.1 and converter library 26.105.0, and identified both device definitions as external.
+- Both devices returned fresh, non-retained MQTT state publications after read-only requests for on/off state, brightness, and color temperature. Database activity timestamps advanced during the check. No settings were changed. Physical output and write-command behavior were not retested.
+- Retained warning/error logs spanned August 23 through September 5. No network-leave line named either tested bulb. The same retained log set did record an unrelated device leaving, but this does not establish complete event coverage for the bulbs.
+- Each bulb had 37 failed availability pings across six dates and two failed post-reconnect state reads. These are failed attempts, not 39 separate outage episodes. Successful keep-alive reads are not continuously visible at this logging level.
+- Home Assistant returned state history starting August 30 despite a request starting August 15. Roughly six days of available history recorded approximately 8.8 hours of unavailability for each bulb. Most of this occurred in three shared episodes of approximately 24 minutes, 4 hours 55 minutes, and 3 hours 28 minutes. The bridge remained online during these longer episodes; short restart-related transitions were also present.
+- The owner recalled likely mains-switch power removal during the two longer September 3 episodes; that explanation is plausible but not independently verified. The September 2 episode remains unexplained. These durations are observed unavailability, not established keep-alive failures. The record cannot establish uninterrupted operation since installation, a firmware cure, or that the keep-alive caused every later recovery.
+- Current evidence supports mitigation of the originally reproduced self-leave while leaving later availability interruptions unresolved. No new interval comparison or additional-unit replication was performed.
 
 ## Interpretation boundary
 
