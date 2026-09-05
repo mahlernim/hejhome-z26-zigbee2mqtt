@@ -28,7 +28,7 @@
 
 ## Zigbee2MQTT 정식 지원 제안
 
-정확한 fingerprint에만 적용하는 장치 정의와 keep-alive를 `zigbee-herdsman-converters`에 제안하고, 제품 이미지와 주의사항은 `zigbee2mqtt.io`에 기여할 수 있습니다. 모든 `TS0505B` 전구에 일괄 적용해서는 안 됩니다. 120초는 경험적으로 시험한 값이며 GOQUAL은 30초를 사용한다는 점, 통신 중단 원인이 아직 확인되지 않았다는 점을 함께 설명해야 합니다. [공식 기여 절차](https://www.zigbee2mqtt.io/advanced/support-new-devices/01_support_new_devices.html)에 따라 검증과 maintainer 검토가 필요하며, 이 프로젝트는 아직 Z26 upstream PR을 제출하지 않았습니다.
+9월 5일, 정확한 fingerprint에만 적용하는 [장치 정의 PR #13122](https://github.com/Koenkk/zigbee-herdsman-converters/pull/13122)와 [제품 이미지 및 문서 PR #5490](https://github.com/Koenkk/zigbee2mqtt.io/pull/5490)를 제출했습니다. 모든 `TS0505B` 전구에 일괄 적용하지 않습니다. 120초는 경험적으로 시험한 값이며 GOQUAL은 30초를 사용한다는 점, 이후 통신 중단의 원인이 아직 확인되지 않았다는 점을 함께 설명했습니다. 로컬에서 build, lint, 기존 테스트 844개, benchmark 및 별도의 fingerprint와 polling lifecycle 검증을 통과했습니다. 현재 maintainer 검토를 기다리는 단계이며 제출만으로 정식 Zigbee2MQTT 버전에 포함된 것은 아닙니다. 내장 정의가 포함된 버전이 출시되기 전까지는 기존 external converter를 유지하세요.
 
 ## 대상 제품
 
